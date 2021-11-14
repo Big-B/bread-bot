@@ -34,28 +34,35 @@ struct Handler {
     list: Vec<(Regex, ReactionType)>,
 }
 
+impl Handler {
+    fn get_reaction_for_user(&self, id: UserId, msg: &Message) -> Vec<ReactionType> {
+        let mut vec = Vec::new();
+        if let Some(actions) = self.map.get(&id) {
+            // Split into regex and non-regex reactions
+            let (r, mut nr): (Vec<&Action>, Vec<&Action>) =
+                actions.iter().partition(|&a| a.regex.is_some());
+
+            // Collect all the reactions that have matching regexes
+            vec = r
+                .iter()
+                .filter(|a| a.regex.as_ref().unwrap().is_match(&msg.content))
+                .map(|a| a.reaction.clone())
+                .collect();
+
+            // Append all the reactions with no associated regex
+            vec.extend(nr.iter_mut().map(|a| a.reaction.clone()));
+        }
+        vec
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        // Make sure user is defined
-        if let Some(actions) = self.map.get(&msg.author.id) {
-            // Check all actions for this user
-            for action in actions {
-                // Check for regex
-                if let Some(re) = &action.regex {
-                    // Only act if the regex matches
-                    if re.is_match(&msg.content) {
-                        if let Err(why) = msg.react(ctx.http.clone(), action.reaction.clone()).await
-                        {
-                            println!("Error reacting to message: {:?}", why);
-                        }
-                    }
-                } else {
-                    // No regex so just react
-                    if let Err(why) = msg.react(ctx.http.clone(), action.reaction.clone()).await {
-                        println!("Error reacting to message: {:?}", why);
-                    }
-                }
+        // Set all reactions associated with this user
+        for r in self.get_reaction_for_user(msg.author.id, &msg) {
+            if let Err(why) = msg.react(ctx.http.clone(), r.clone()).await {
+                println!("Error reacting to message: {:?}", why);
             }
         }
 
