@@ -59,6 +59,7 @@ impl EventHandler for Handler {
             }
         }
 
+        // Run through the list of actions that are user independent
         for (_, e) in self.list.iter().filter(|(r, _)| r.is_match(&msg.content)) {
             if let Err(why) = msg.react(ctx.http.clone(), e.clone()).await {
                 println!("Error reacting to message: {:?}", why);
@@ -107,7 +108,7 @@ async fn main() {
                 }
             }
             (None, Some(filter)) => {
-                let r = Regex::new(&filter).expect("Expected valid regex");
+                let r = Regex::new(filter).expect("Expected valid regex");
                 list.push((r, ReactionType::Unicode(action.reaction.clone())));
             }
             (None, None) => {
