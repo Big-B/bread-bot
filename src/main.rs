@@ -96,14 +96,33 @@ async fn main() {
     let config_data: Config = toml::from_str(&config_data).expect("Invalid config file format");
 
     // Loop over configured action and convert them to a HashMap
+    let (map, list) = parse_config_data(&config_data.actions);
+    let mut client = Client::builder(&config_data.discord_token)
+        .event_handler(Handler { map, list })
+        .await
+        .expect("Err creating client");
+
+    if let Err(why) = client.start().await {
+        println!("Client error: {:?}", why);
+    }
+}
+
+fn parse_config_data(
+    actions: &Vec<ActionInput>,
+) -> (HashMap<UserId, Vec<Action>>, Vec<(Regex, ReactionType)>) {
     let mut map = HashMap::new();
     let mut list = Vec::new();
-    for action in config_data.actions {
+
+    // Iterate over all the actions parsed
+    for action in actions {
+
+        // Validate actions. They must have either a filter, or a user, or both.
         match (&action.users, &action.filter) {
             (Some(users), _) => {
                 // Check to see if a regex was provided and if it's a valid regex
                 let r: Option<Arc<Regex>> = action
                     .filter
+                    .as_ref()
                     .map(|val| Arc::new(Regex::new(&val).expect("Expected valid regex")));
 
                 for user in users {
@@ -123,13 +142,5 @@ async fn main() {
             }
         }
     }
-
-    let mut client = Client::builder(&config_data.discord_token)
-        .event_handler(Handler { map, list })
-        .await
-        .expect("Err creating client");
-
-    if let Err(why) = client.start().await {
-        println!("Client error: {:?}", why);
-    }
+    (map, list)
 }
