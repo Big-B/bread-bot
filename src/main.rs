@@ -13,7 +13,7 @@ use serenity::{
 
 #[derive(Deserialize)]
 struct ActionInput {
-    users: Vec<UserId>,
+    users: Option<Vec<UserId>>,
     filter: Option<String>,
     reaction: String,
 }
@@ -31,6 +31,7 @@ struct Action {
 
 struct Handler {
     map: HashMap<UserId, Vec<Action>>,
+    list: Vec<(Regex, ReactionType)>,
 }
 
 #[async_trait]
@@ -55,6 +56,12 @@ impl EventHandler for Handler {
                         println!("Error reacting to message: {:?}", why);
                     }
                 }
+            }
+        }
+
+        for (_, e) in self.list.iter().filter(|(r, _)| r.is_match(&msg.content)) {
+            if let Err(why) = msg.react(ctx.http.clone(), e.clone()).await {
+                println!("Error reacting to message: {:?}", why);
             }
         }
     }
@@ -82,23 +89,35 @@ async fn main() {
 
     // Loop over configured action and convert them to a HashMap
     let mut map = HashMap::new();
+    let mut list = Vec::new();
     for action in config_data.actions {
-        // Check to see if a regex was provided and if it's a valid regex
-        let r: Option<Arc<Regex>> = action
-            .filter
-            .map(|val| Arc::new(Regex::new(&val).expect("Expected valid regex")));
+        match (&action.users, &action.filter) {
+            (Some(users), _) => {
+                // Check to see if a regex was provided and if it's a valid regex
+                let r: Option<Arc<Regex>> = action
+                    .filter
+                    .map(|val| Arc::new(Regex::new(&val).expect("Expected valid regex")));
 
-        for user in action.users {
-            // Insert action into the map
-            map.entry(user).or_insert_with(Vec::new).push(Action {
-                regex: r.clone(),
-                reaction: ReactionType::Unicode(action.reaction.clone()),
-            });
+                for user in users {
+                    // Insert action into the map
+                    map.entry(*user).or_insert_with(Vec::new).push(Action {
+                        regex: r.clone(),
+                        reaction: ReactionType::Unicode(action.reaction.clone()),
+                    });
+                }
+            }
+            (None, Some(filter)) => {
+                let r = Regex::new(&filter).expect("Expected valid regex");
+                list.push((r, ReactionType::Unicode(action.reaction.clone())));
+            }
+            (None, None) => {
+                eprintln!("Entry must have either users or a filter")
+            }
         }
     }
 
     let mut client = Client::builder(&config_data.discord_token)
-        .event_handler(Handler { map })
+        .event_handler(Handler { map, list })
         .await
         .expect("Err creating client");
 
