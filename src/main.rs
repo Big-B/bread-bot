@@ -1,5 +1,7 @@
+mod action;
 mod handler;
-use crate::handler::{Handler, Action};
+use crate::action::Action;
+use crate::handler::Handler;
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -44,7 +46,7 @@ async fn main() {
     // Loop over configured action and convert them to a HashMap
     let (map, list) = parse_config_data(&config_data.actions);
     let mut client = Client::builder(&config_data.discord_token)
-        .event_handler(Handler { map, list })
+        .event_handler(Handler::new(map, list))
         .await
         .expect("Err creating client");
 
@@ -72,10 +74,10 @@ fn parse_config_data(
 
                 for user in users {
                     // Insert action into the map
-                    map.entry(*user).or_insert_with(Vec::new).push(Action {
-                        regex: r.clone(),
-                        reaction: ReactionType::Unicode(action.reaction.clone()),
-                    });
+                    map.entry(*user).or_insert_with(Vec::new).push(Action::new(
+                        r.clone(),
+                        ReactionType::Unicode(action.reaction.clone()),
+                    ));
                 }
             }
             (None, Some(filter)) => {

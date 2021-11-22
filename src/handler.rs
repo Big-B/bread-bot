@@ -1,3 +1,4 @@
+use crate::action::Action;
 use regex::Regex;
 use serenity::{
     async_trait,
@@ -5,35 +6,33 @@ use serenity::{
     prelude::*,
 };
 use std::collections::HashMap;
-use std::sync::Arc;
 
 pub struct Handler {
-    pub map: HashMap<UserId, Vec<Action>>,
-    pub list: Vec<(Regex, ReactionType)>,
-}
-
-pub struct Action {
-    pub regex: Option<Arc<Regex>>,
-    pub reaction: ReactionType,
+    map: HashMap<UserId, Vec<Action>>,
+    list: Vec<(Regex, ReactionType)>,
 }
 
 impl Handler {
+    pub fn new(map: HashMap<UserId, Vec<Action>>, list: Vec<(Regex, ReactionType)>) -> Self {
+        Self { map, list }
+    }
+
     fn get_reaction_for_user(&self, id: UserId, msg: &Message) -> Vec<ReactionType> {
         let mut vec = Vec::new();
         if let Some(actions) = self.map.get(&id) {
             // Split into regex and non-regex reactions
             let (r, mut nr): (Vec<&Action>, Vec<&Action>) =
-                actions.iter().partition(|&a| a.regex.is_some());
+                actions.iter().partition(|&a| a.get_regex().is_some());
 
             // Collect all the reactions that have matching regexes
             vec = r
                 .iter()
-                .filter(|a| a.regex.as_ref().unwrap().is_match(&msg.content))
-                .map(|a| a.reaction.clone())
+                .filter(|a| a.get_regex().as_ref().unwrap().is_match(&msg.content))
+                .map(|a| a.get_reaction().clone())
                 .collect();
 
             // Append all the reactions with no associated regex
-            vec.extend(nr.iter_mut().map(|a| a.reaction.clone()));
+            vec.extend(nr.iter_mut().map(|a| a.get_reaction().clone()));
         }
         vec
     }
