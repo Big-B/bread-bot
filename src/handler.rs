@@ -6,14 +6,15 @@ use serenity::{
     prelude::*,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct Handler {
     map: HashMap<UserId, Vec<Action>>,
-    list: Vec<(Regex, ReactionType)>,
+    list: Vec<(Arc<Regex>, ReactionType)>,
 }
 
 impl Handler {
-    pub fn new(map: HashMap<UserId, Vec<Action>>, list: Vec<(Regex, ReactionType)>) -> Self {
+    pub fn new(map: HashMap<UserId, Vec<Action>>, list: Vec<(Arc<Regex>, ReactionType)>) -> Self {
         Self { map, list }
     }
 

@@ -18,7 +18,7 @@ use serenity::{
 struct ActionInput {
     users: Option<Vec<UserId>>,
     filter: Option<String>,
-    reaction: String,
+    reactions: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -57,7 +57,7 @@ async fn main() {
 
 fn parse_config_data(
     actions: &Vec<ActionInput>,
-) -> (HashMap<UserId, Vec<Action>>, Vec<(Regex, ReactionType)>) {
+) -> (HashMap<UserId, Vec<Action>>, Vec<(Arc<Regex>, ReactionType)>) {
     let mut map = HashMap::new();
     let mut list = Vec::new();
 
@@ -74,15 +74,19 @@ fn parse_config_data(
 
                 for user in users {
                     // Insert action into the map
-                    map.entry(*user).or_insert_with(Vec::new).push(Action::new(
-                        r.clone(),
-                        ReactionType::Unicode(action.reaction.clone()),
-                    ));
+                    for reaction in &action.reactions {
+                        map.entry(*user).or_insert_with(Vec::new).push(Action::new(
+                            r.clone(),
+                            ReactionType::Unicode(reaction.clone()),
+                        ));
+                    }
                 }
             }
             (None, Some(filter)) => {
-                let r = Regex::new(filter).expect("Expected valid regex");
-                list.push((r, ReactionType::Unicode(action.reaction.clone())));
+                let r = Arc::new(Regex::new(filter).expect("Expected valid regex"));
+                for reaction in &action.reactions {
+                    list.push((r.clone(), ReactionType::Unicode(reaction.clone())));
+                }
             }
             (None, None) => {
                 eprintln!("Entry must have either users or a filter")

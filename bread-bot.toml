@@ -2,17 +2,17 @@ discord_token = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 [[actions]]
 users = ["239194802002853898"]
-reaction = "🍞" # Bread Emoji
+reactions = ["🍞"] # Bread Emoji
 
 [[actions]]
 users = ["336320366668677120"]
-reaction = "🔥" # Fire Emoji
+reactions = ["🔥"] # Fire Emoji
 filter = '(?i)\bmicrophones?\b|\bmics?\b'
 
 [[actions]]
-reaction = "🍞" # Bread Emoji
+reactions = ["🍞"] # Bread Emoji
 filter = '(?i)\bbread\b'
 
 [[actions]]
-reaction = "🔥" # Fire Emoji
+reactions = ["🔥"] # Fire Emoji
 filter = '(?i)\bfire\b'
