@@ -44,9 +44,9 @@ async fn main() {
     let config_data: Config = toml::from_str(&config_data).expect("Invalid config file format");
 
     // Loop over configured action and convert them to a HashMap
-    let (map, list) = parse_config_data(&config_data.actions);
+    let handler = parse_config_data(&config_data.actions);
     let mut client = Client::builder(&config_data.discord_token)
-        .event_handler(Handler::new(map, list))
+        .event_handler(handler)
         .await
         .expect("Err creating client");
 
@@ -55,9 +55,7 @@ async fn main() {
     }
 }
 
-fn parse_config_data(
-    actions: &Vec<ActionInput>,
-) -> (HashMap<UserId, Vec<Action>>, Vec<(Regex, Vec<ReactionType>)>) {
+fn parse_config_data(actions: &[ActionInput]) -> Handler {
     let mut map = HashMap::new();
     let mut list = Vec::new();
 
@@ -71,7 +69,7 @@ fn parse_config_data(
                 let r: Option<Arc<Regex>> = action
                     .filter
                     .as_ref()
-                    .map(|val| Arc::new(Regex::new(&val).expect("Expected valid regex")));
+                    .map(|val| Arc::new(Regex::new(val).expect("Expected valid regex")));
 
                 for user in users {
                     // Insert action into the map
@@ -96,5 +94,5 @@ fn parse_config_data(
             }
         }
     }
-    (map, list)
+    Handler::new(map, list)
 }
