@@ -57,7 +57,7 @@ async fn main() {
 
 fn parse_config_data(
     actions: &Vec<ActionInput>,
-) -> (HashMap<UserId, Vec<Action>>, Vec<(Arc<Regex>, ReactionType)>) {
+) -> (HashMap<UserId, Vec<Action>>, Vec<(Regex, Vec<ReactionType>)>) {
     let mut map = HashMap::new();
     let mut list = Vec::new();
 
@@ -65,6 +65,7 @@ fn parse_config_data(
     for action in actions {
         // Validate actions. They must have either a filter, or a user, or both.
         match (&action.users, &action.filter) {
+            // These actions are filtered by user first, then potentially a regex
             (Some(users), _) => {
                 // Check to see if a regex was provided and if it's a valid regex
                 let r: Option<Arc<Regex>> = action
@@ -83,10 +84,12 @@ fn parse_config_data(
                 }
             }
             (None, Some(filter)) => {
-                let r = Arc::new(Regex::new(filter).expect("Expected valid regex"));
+                let r = Regex::new(filter).expect("Expected valid regex");
+                let mut v = Vec::new();
                 for reaction in &action.reactions {
-                    list.push((r.clone(), ReactionType::Unicode(reaction.clone())));
+                    v.push(ReactionType::Unicode(reaction.clone()));
                 }
+                list.push((r, v));
             }
             (None, None) => {
                 eprintln!("Entry must have either users or a filter")

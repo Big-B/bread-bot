@@ -6,15 +6,14 @@ use serenity::{
     prelude::*,
 };
 use std::collections::HashMap;
-use std::sync::Arc;
 
 pub struct Handler {
     map: HashMap<UserId, Vec<Action>>,
-    list: Vec<(Arc<Regex>, ReactionType)>,
+    list: Vec<(Regex, Vec<ReactionType>)>,
 }
 
 impl Handler {
-    pub fn new(map: HashMap<UserId, Vec<Action>>, list: Vec<(Arc<Regex>, ReactionType)>) -> Self {
+    pub fn new(map: HashMap<UserId, Vec<Action>>, list: Vec<(Regex, Vec<ReactionType>)>) -> Self {
         Self { map, list }
     }
 
@@ -51,8 +50,10 @@ impl EventHandler for Handler {
 
         // Run through the list of actions that are user independent
         for (_, e) in self.list.iter().filter(|(r, _)| r.is_match(&msg.content)) {
-            if let Err(why) = msg.react(ctx.http.clone(), e.clone()).await {
-                println!("Error reacting to message: {:?}", why);
+            for reaction in e {
+                if let Err(why) = msg.react(ctx.http.clone(), reaction.clone()).await {
+                    println!("Error reacting to message: {:?}", why);
+                }
             }
         }
     }
