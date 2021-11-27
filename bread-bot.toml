@@ -1,3 +1,3 @@
 discord_token = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-postgres_url = postgres://bread-bot:<password>@localhost/bread
+postgres_url = "postgres://bread-bot:<password>@localhost/bread"
