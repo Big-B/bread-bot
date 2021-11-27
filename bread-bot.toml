@@ -1,18 +1,3 @@
 discord_token = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-[[actions]]
-users = ["239194802002853898"]
-reactions = ["🍞"] # Bread Emoji
-
-[[actions]]
-users = ["336320366668677120"]
-reactions = ["🔥"] # Fire Emoji
-filter = '(?i)\bmicrophones?\b|\bmics?\b'
-
-[[actions]]
-reactions = ["🍞"] # Bread Emoji
-filter = '(?i)\bbread\b'
-
-[[actions]]
-reactions = ["🔥"] # Fire Emoji
-filter = '(?i)\bfire\b'
+postgres_url = postgres://bread-bot:<password>@localhost/bread

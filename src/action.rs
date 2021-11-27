@@ -1,21 +1,12 @@
-use regex::Regex;
-use serenity::model::prelude::*;
-use std::sync::Arc;
+use crate::schema::actions;
+use diesel::{Queryable, Insertable};
+
+#[derive(Queryable,Insertable, Debug)]
+#[table_name="actions"]
 pub struct Action {
-    regex: Option<Arc<Regex>>,
-    reaction: ReactionType,
-}
-
-impl Action {
-    pub fn new(regex: Option<Arc<Regex>>, reaction: ReactionType) -> Self {
-        Self { regex, reaction }
-    }
-
-    pub fn get_regex(&self) -> &Option<Arc<Regex>> {
-        &self.regex
-    }
-
-    pub fn get_reaction(&self) -> &ReactionType {
-        &self.reaction
-    }
+    pub id: i64,
+    pub guild_id: i64,
+    pub user_id: Option<i64>,
+    pub regex: Option<String>,
+    pub reactions: Vec<String>,
 }

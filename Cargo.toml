@@ -11,3 +11,4 @@ tokio = { version = "*", features = ["macros", "rt-multi-thread"] }
 regex = "*"
 serde = "*"
 toml = "*"
+diesel = { version = "*", features = ["postgres"] }
