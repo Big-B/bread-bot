@@ -1,26 +1,53 @@
 use std::collections::BTreeSet;
 pub struct ReactionSet {
-    list: Vec<String>,
-    set: BTreeSet<String>,
+    list: String,
+    set: BTreeSet<char>,
 }
 
 impl ReactionSet {
     pub fn new() -> Self {
         ReactionSet {
-            list: Vec::new(),
+            list: String::new(),
             set: BTreeSet::new(),
         }
     }
 
-    pub fn add_reactions(&mut self, reactions: &mut Vec<String>) {
-        let mut map = reactions.clone().into_iter().collect();
+    pub fn add_reactions(&mut self, reactions: &[String]) {
+        let mut map = reactions.concat().chars().collect();
         if self.set.is_disjoint(&map) {
             self.set.append(&mut map);
-            self.list.append(reactions);
+            self.list.push_str(&reactions.concat());
         }
     }
 
-    pub fn get_reaction_str(&self) -> String {
-        self.list.concat()
+    pub fn get_reaction_str(&self) -> &str {
+        &self.list
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_test() {
+        let set = ReactionSet::new();
+        let ret = set.get_reaction_str();
+        assert_eq!(ret, "");
+    }
+
+    #[test]
+    fn identity() {
+        let mut set = ReactionSet::new();
+        set.add_reactions(&["a".to_string(), "b".to_string(), "c".to_string()]);
+        assert_eq!(set.get_reaction_str(), "abc");
+    }
+
+    #[test]
+    fn no_duplicates() {
+        let mut set = ReactionSet::new();
+        set.add_reactions(&["a".to_string()]);
+        set.add_reactions(&["a".to_string()]);
+        assert_eq!(set.get_reaction_str(), "a");
     }
 }
