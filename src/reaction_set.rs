@@ -21,6 +21,6 @@ impl ReactionSet {
     }
 
     pub fn get_reaction_str(&self) -> String {
-        self.list.concat().to_owned()
+        self.list.concat()
     }
 }
