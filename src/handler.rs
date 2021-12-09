@@ -1,5 +1,6 @@
 extern crate diesel;
 use crate::action::Action;
+use crate::reaction_set::ReactionSet;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use regex::Regex;
@@ -39,26 +40,22 @@ impl EventHandler for Handler {
 
         // Gather all the reactions. If there is a regex, check it, if not then
         // just add the reaction
-        let mut all_reactions = String::new();
-        for action in results {
+        let mut reaction_set = ReactionSet::new();
+        for mut action in results {
             if let Some(s) = action.regex {
                 // There is a regex, so see if it matches
                 let r = Regex::new(&s).unwrap();
                 if r.is_match(&msg.content) {
-                    for reaction in action.reactions {
-                        all_reactions.push_str(&reaction);
-                    }
+                    reaction_set.add_reactions(&mut action.reactions);
                 }
             } else {
-                // No regex, so just add to list
-                for reaction in action.reactions {
-                    all_reactions.push_str(&reaction);
-                }
+                // No regex, so just add to list if not conflicting
+                reaction_set.add_reactions(&mut action.reactions);
             }
         }
 
         // Go through all the reactions and react to the message appropriately
-        for reaction in all_reactions.chars() {
+        for reaction in reaction_set.get_reaction_str().chars() {
             if let Err(why) = msg.react(ctx.http.clone(), reaction).await {
                 println!("Error reacting to message: {:?}", why);
             }

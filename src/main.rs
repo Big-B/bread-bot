@@ -1,6 +1,7 @@
 mod action;
 mod handler;
 mod schema;
+mod reaction_set;
 #[macro_use]
 extern crate diesel;
 use crate::handler::Handler;
