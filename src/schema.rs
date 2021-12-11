@@ -5,5 +5,6 @@ table! {
         user_id -> Nullable<Int8>,
         regex -> Nullable<Text>,
         reactions -> Array<Bpchar>,
+        expiration -> Nullable<Int8>,
     }
 }

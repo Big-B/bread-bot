@@ -18,6 +18,7 @@ use std::sync::Mutex;
 struct Config {
     discord_token: String,
     postgres_url: String,
+    application_id: u64,
 }
 
 #[tokio::main]
@@ -40,6 +41,7 @@ async fn main() {
 
     // Loop over configured action and convert them to a HashMap
     let mut client = Client::builder(&config_data.discord_token)
+        .application_id(config_data.application_id)
         .event_handler(Handler::new(Arc::new(Mutex::new(connection))))
         .await
         .expect("Err creating client");

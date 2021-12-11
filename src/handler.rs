@@ -1,16 +1,28 @@
 extern crate diesel;
 use crate::action::Action;
 use crate::reaction_set::ReactionSet;
+use diesel::insert_into;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use regex::Regex;
 use serenity::{
     async_trait,
-    model::{channel::Message, gateway::Ready},
+    model::{
+        channel::Message,
+        gateway::Ready,
+        id::{GuildId, UserId},
+        interactions::{
+            application_command::{
+                ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
+            },
+            Interaction, InteractionResponseType,
+        },
+    },
     prelude::*,
 };
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::{Duration, SystemTime};
 
 pub struct Handler {
     db_con: Arc<Mutex<PgConnection>>,
@@ -20,12 +32,35 @@ impl Handler {
     pub fn new(db_con: Arc<Mutex<PgConnection>>) -> Self {
         Self { db_con }
     }
+
+    fn attack(&self, guild: GuildId, user: UserId, emotes: &str, expiration_time: u64) {
+        use crate::schema::actions::dsl::*;
+        let db = self.db_con.lock().unwrap();
+        let res = insert_into(actions)
+            .values((
+                guild_id.eq(guild.0 as i64),
+                user_id.eq(user.0 as i64),
+                regex.eq(emotes),
+                expiration.eq(expiration_time as i64),
+            ))
+            .execute(&*db);
+
+        match res {
+            Err(_) => println!("Error inserting attack!"),
+            _ => {}
+        }
+    }
 }
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         use crate::schema::actions::dsl::*;
+
+        let time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or(Duration::MAX)
+            .as_secs();
 
         // Grab the results of the query and minimize the scope of the db lock
         // Looking for either a matching or null author in the proper guild
@@ -34,6 +69,7 @@ impl EventHandler for Handler {
             actions
                 .filter(guild_id.eq(msg.guild_id.expect("No guild ID for message").0 as i64))
                 .filter(user_id.eq(msg.author.id.0 as i64).or(user_id.is_null()))
+                .filter(expiration.is_null().or(expiration.gt(time as i64)))
                 .load::<Action>(&*db)
                 .expect("Query Failed")
         };
@@ -62,7 +98,89 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::ApplicationCommand(command) = interaction {
+            let content = match command.data.name.as_str() {
+                "ping" => "Hey, I'm alive!".to_string(),
+                "attack" => {
+                    let uid = command
+                        .data
+                        .options
+                        .get(0)
+                        .unwrap()
+                        .resolved
+                        .as_ref()
+                        .unwrap();
+                    //if let ApplicationCommandInteractionDataOptionValue::User(user, _) = uid {
+                    //    format!("User: {}, UID: {}", user.tag(), user.id)
+                    //} else {
+                    //    "Didn't work".to_string()
+                    //}
+                    self.attack(command.guild_id.unwrap(), uid, "", 0);
+                    "Attacked".to_string()
+                }
+                _ => "not implemented :(".to_string(),
+            };
+
+            if let Err(why) = command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(content))
+                })
+                .await
+            {
+                println!("Cannot respond to slash command: {}", why);
+            }
+        }
+    }
+
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        let guild_id = GuildId(908915854484308018);
+        let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
+            commands.create_application_command(|command| {
+                command
+                    .name("attack")
+                    .description("Set an attack rule")
+                    .create_option(|option| {
+                        option
+                            .name("user")
+                            .description("The user to attack")
+                            .kind(ApplicationCommandOptionType::User)
+                            .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("emotes")
+                            .description("List of emotes to attack with")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("duration")
+                            .description("Length of attack in minutes")
+                            .kind(ApplicationCommandOptionType::Integer)
+                            .min_int_value(1)
+                            .max_int_value(1440)
+                            .required(true)
+                    })
+            })
+        })
+        .await;
+
+        println!(
+            "Guild {} has the following guild commands: {:#?}",
+            guild_id, commands
+        );
+
+        //let commands = ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
+        //    commands.create_application_command(|command| {
+        //        command.name("ping").description("A ping command")
+        //    })
+        //})
+        //.await;
+        //println!(" Global commands: {:#?}", commands);
         println!("{} is connected!", ready.user.name);
     }
 }
