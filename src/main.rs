@@ -1,4 +1,5 @@
 mod action;
+mod attack;
 mod handler;
 mod schema;
 mod reaction_set;
@@ -40,7 +41,7 @@ async fn main() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", config_data.postgres_url));
 
     // Loop over configured action and convert them to a HashMap
-    let mut client = Client::builder(&config_data.discord_token)
+    let mut client = Client::builder(&config_data.discord_token, GatewayIntents::MESSAGE_CONTENT)
         .application_id(config_data.application_id)
         .event_handler(Handler::new(Arc::new(Mutex::new(connection))))
         .await

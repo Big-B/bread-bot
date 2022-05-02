@@ -1,5 +1,6 @@
 use crate::schema::actions;
 use diesel::{Queryable, Insertable};
+use std::time::SystemTime;
 
 #[derive(Queryable, Insertable, Debug)]
 #[table_name="actions"]
@@ -9,5 +10,5 @@ pub struct Action {
     pub user_id: Option<i64>,
     pub regex: Option<String>,
     pub reactions: Vec<String>,
-    pub expiration: Option<i64>,
+    pub expiration: Option<SystemTime>,
 }
