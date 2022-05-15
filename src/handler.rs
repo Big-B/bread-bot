@@ -1,6 +1,6 @@
 extern crate diesel;
 use crate::action::Action;
-use crate::attack::{Attack, AttackBuilderError};
+use crate::target::{Target, TargetBuilderError};
 use crate::reaction_set::ReactionSet;
 use diesel::insert_into;
 use diesel::pg::PgConnection;
@@ -35,21 +35,21 @@ impl Handler {
         Self { db_con }
     }
 
-    fn attack(&self, attack: Attack) {
+    fn target(&self, target: Target) {
         use crate::schema::actions::dsl::*;
         let db = self.db_con.lock().unwrap();
         let res = insert_into(actions)
             .values((
-                guild_id.eq(attack.get_guild().0 as i64),
-                user_id.eq(attack.get_user().0 as i64),
-                reactions.eq(attack.get_emotes()),
-                expiration.eq(attack.get_expiration()),
-                regex.eq(attack.get_regex()),
+                guild_id.eq(target.get_guild().0 as i64),
+                user_id.eq(target.get_user().0 as i64),
+                reactions.eq(target.get_emotes()),
+                expiration.eq(target.get_expiration()),
+                regex.eq(target.get_regex()),
             ))
             .execute(&*db);
 
         if let Err(e) = res {
-            println!("Error inserting attack {:?}! {}", attack, e);
+            println!("Error inserting target {:?}! {}", target, e);
         }
     }
 }
@@ -108,8 +108,8 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
             let content = match command.data.name.as_str() {
-                "attack" => {
-                    let mut builder = Attack::builder();
+                "target" => {
+                    let mut builder = Target::builder();
                     builder = builder.set_guild(command.guild_id.unwrap());
                     for entry in &command.data.options {
                         match entry.name.as_ref() {
@@ -139,11 +139,11 @@ impl EventHandler for Handler {
                         }
                     }
                     match builder.build() {
-                        Ok(attack) => {
-                            self.attack(attack);
-                            "Attack added".to_string()
+                        Ok(target) => {
+                            self.target(target);
+                            "Target added".to_string()
                         }
-                        Err(AttackBuilderError::BadRegex(_)) => {
+                        Err(TargetBuilderError::BadRegex(_)) => {
                             "Your regex game is weak, bitch. Refer to \
                             https://docs.rs/regex/latest/regex/index.html#syntax"
                                 .to_string()
@@ -176,26 +176,26 @@ impl EventHandler for Handler {
         let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
             commands.create_application_command(|command| {
                 command
-                    .name("attack")
-                    .description("Set an attack rule")
+                    .name("target")
+                    .description("Set an target rule")
                     .create_option(|option| {
                         option
                             .name("user")
-                            .description("The user to attack")
+                            .description("The user to target")
                             .kind(CommandOptionType::User)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("emotes")
-                            .description("List of emotes to attack with")
+                            .description("List of emotes to target with")
                             .kind(CommandOptionType::String)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("duration")
-                            .description("Length of attack in minutes")
+                            .description("Length of target in minutes")
                             .kind(CommandOptionType::Integer)
                             .min_int_value(1)
                             .max_int_value(1440)
@@ -221,26 +221,26 @@ impl EventHandler for Handler {
         let commands = Command::set_global_application_commands(&ctx.http, |commands| {
             commands.create_application_command(|command| {
                 command
-                    .name("attack")
-                    .description("Set an attack rule")
+                    .name("target")
+                    .description("Set an target rule")
                     .create_option(|option| {
                         option
                             .name("user")
-                            .description("The user to attack")
+                            .description("The user to target")
                             .kind(CommandOptionType::User)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("emotes")
-                            .description("List of emotes to attack with")
+                            .description("List of emotes to target with")
                             .kind(CommandOptionType::String)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("duration")
-                            .description("Length of attack in minutes")
+                            .description("Length of target in minutes")
                             .kind(CommandOptionType::Integer)
                             .min_int_value(1)
                             .max_int_value(1440)

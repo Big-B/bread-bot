@@ -5,7 +5,7 @@ use std::fmt;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug)]
-pub struct Attack {
+pub struct Target {
     guild: GuildId,
     user: UserId,
     emotes: Vec<String>,
@@ -13,9 +13,9 @@ pub struct Attack {
     regex: Option<String>,
 }
 
-impl Attack {
-    pub fn builder() -> AttackBuilder {
-        AttackBuilder::default()
+impl Target {
+    pub fn builder() -> TargetBuilder {
+        TargetBuilder::default()
     }
 
     pub fn get_guild(&self) -> GuildId {
@@ -40,24 +40,24 @@ impl Attack {
 }
 
 #[derive(Debug)]
-pub enum AttackBuilderError {
+pub enum TargetBuilderError {
     BadRegex(regex::Error),
     EmptyField(String),
 }
 
-impl fmt::Display for AttackBuilderError {
+impl fmt::Display for TargetBuilderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            AttackBuilderError::BadRegex(_) => write!(f, "Regex was invalid"),
-            AttackBuilderError::EmptyField(s) => write!(f, "{}", s),
+            TargetBuilderError::BadRegex(_) => write!(f, "Regex was invalid"),
+            TargetBuilderError::EmptyField(s) => write!(f, "{}", s),
         }
     }
 }
 
-impl Error for AttackBuilderError {}
+impl Error for TargetBuilderError {}
 
 #[derive(Default, Clone)]
-pub struct AttackBuilder {
+pub struct TargetBuilder {
     guild: Option<GuildId>,
     user: Option<UserId>,
     emotes: Option<String>,
@@ -65,23 +65,23 @@ pub struct AttackBuilder {
     regex: Option<String>,
 }
 
-impl AttackBuilder {
-    pub fn set_guild(mut self, gid: GuildId) -> AttackBuilder {
+impl TargetBuilder {
+    pub fn set_guild(mut self, gid: GuildId) -> TargetBuilder {
         self.guild = Some(gid);
         self
     }
 
-    pub fn set_user(mut self, uid: UserId) -> AttackBuilder {
+    pub fn set_user(mut self, uid: UserId) -> TargetBuilder {
         self.user = Some(uid);
         self
     }
 
-    pub fn set_emotes(mut self, emotes: &str) -> AttackBuilder {
+    pub fn set_emotes(mut self, emotes: &str) -> TargetBuilder {
         self.emotes = Some(emotes.to_owned());
         self
     }
 
-    pub fn set_expiration(mut self, expiration: u64) -> AttackBuilder {
+    pub fn set_expiration(mut self, expiration: u64) -> TargetBuilder {
         let now = SystemTime::now();
         if let Some(expiration) = now.checked_add(Duration::from_secs(expiration * 60)) {
             self.expiration = Some(expiration);
@@ -89,39 +89,39 @@ impl AttackBuilder {
         self
     }
 
-    pub fn set_regex(mut self, regex: &str) -> AttackBuilder {
+    pub fn set_regex(mut self, regex: &str) -> TargetBuilder {
         self.regex = Some(regex.to_owned());
         self
     }
 
-    pub fn build(self) -> Result<Attack, AttackBuilderError> {
+    pub fn build(self) -> Result<Target, TargetBuilderError> {
         if self.guild.is_none() {
-            return Err(AttackBuilderError::EmptyField(
+            return Err(TargetBuilderError::EmptyField(
                 "No Guild provided".to_string(),
             ));
         }
         if self.user.is_none() {
-            return Err(AttackBuilderError::EmptyField(
+            return Err(TargetBuilderError::EmptyField(
                 "No User provided".to_string(),
             ));
         }
         if self.emotes.is_none() {
-            return Err(AttackBuilderError::EmptyField(
+            return Err(TargetBuilderError::EmptyField(
                 "No Emotes provided".to_string(),
             ));
         }
         if self.expiration.is_none() {
-            return Err(AttackBuilderError::EmptyField(
+            return Err(TargetBuilderError::EmptyField(
                 "No Expiration provided".to_string(),
             ));
         }
         if self.regex.is_some() {
             if let Err(e) = Regex::new(self.regex.as_ref().unwrap()) {
-                return Err(AttackBuilderError::BadRegex(e));
+                return Err(TargetBuilderError::BadRegex(e));
             }
         }
 
-        Ok(Attack {
+        Ok(Target {
             guild: self.guild.unwrap(),
             user: self.user.unwrap(),
             emotes: self
