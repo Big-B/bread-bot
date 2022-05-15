@@ -18,7 +18,6 @@ use serenity::{
         },
         channel::Message,
         gateway::Ready,
-        id::GuildId,
     },
     prelude::*,
 };
@@ -108,7 +107,7 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
             let content = match command.data.name.as_str() {
-                "target" => {
+                "target_user" | "target_regex" => {
                     let mut builder = Target::builder();
                     builder = builder.set_guild(command.guild_id.unwrap());
                     for entry in &command.data.options {
@@ -173,93 +172,81 @@ impl EventHandler for Handler {
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        let guild_id = GuildId(908915854484308018);
-
-        // Commands for the bot testing server
-        let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
-            commands.create_application_command(|command| {
-                command
-                    .name("target")
-                    .description("Set an target rule")
-                    .create_option(|option| {
-                        option
-                            .name("emotes")
-                            .description("List of emotes to target with")
-                            .kind(CommandOptionType::String)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("duration")
-                            .description("Length of target in minutes")
-                            .kind(CommandOptionType::Integer)
-                            .min_int_value(1)
-                            .max_int_value(1440)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("user")
-                            .description("The user to target")
-                            .kind(CommandOptionType::User)
-                            .required(false)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("regex")
-                            .description("Regular expression to match against")
-                            .kind(CommandOptionType::String)
-                            .required(false)
-                    })
-            })
-        })
-        .await;
-
-        println!(
-            "Guild {} has the following guild commands: {:#?}",
-            guild_id, commands
-        );
-
         // Commands for all servers
-        let commands = Command::set_global_application_commands(&ctx.http, |commands| {
-            commands.create_application_command(|command| {
-                command
-                    .name("target")
-                    .description("Set an target rule")
-                    .create_option(|option| {
-                        option
-                            .name("emotes")
-                            .description("List of emotes to target with")
-                            .kind(CommandOptionType::String)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("duration")
-                            .description("Length of target in minutes")
-                            .kind(CommandOptionType::Integer)
-                            .min_int_value(1)
-                            .max_int_value(1440)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("user")
-                            .description("The user to target")
-                            .kind(CommandOptionType::User)
-                            .required(false)
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("regex")
-                            .description("Regular expression to match against")
-                            .kind(CommandOptionType::String)
-                            .required(false)
-                    })
-            })
+        Command::set_global_application_commands(&ctx.http, |commands| {
+            commands
+                .create_application_command(|command| {
+                    command
+                        .name("target_user")
+                        .description("Target a user")
+                        .create_option(|option| {
+                            option
+                                .name("user")
+                                .description("The user to target")
+                                .kind(CommandOptionType::User)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("emotes")
+                                .description("List of emotes to target with")
+                                .kind(CommandOptionType::String)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("duration")
+                                .description("Length of target in minutes")
+                                .kind(CommandOptionType::Integer)
+                                .min_int_value(1)
+                                .max_int_value(1440)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("regex")
+                                .description("Regular expression to match against")
+                                .kind(CommandOptionType::String)
+                                .required(false)
+                        })
+                })
+                .create_application_command(|command| {
+                    command
+                        .name("target_regex")
+                        .description("Target message content")
+                        .create_option(|option| {
+                            option
+                                .name("regex")
+                                .description("Regular expression to match against")
+                                .kind(CommandOptionType::String)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("emotes")
+                                .description("List of emotes to target with")
+                                .kind(CommandOptionType::String)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("duration")
+                                .description("Length of target in minutes")
+                                .kind(CommandOptionType::Integer)
+                                .min_int_value(1)
+                                .max_int_value(1440)
+                                .required(true)
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("user")
+                                .description("The user to target")
+                                .kind(CommandOptionType::User)
+                                .required(false)
+                        })
+                })
         })
-        .await;
-        println!(" Global commands: {:#?}", commands);
+        .await.unwrap();
         println!("{} is connected!", ready.user.name);
     }
 }
