@@ -1,6 +1,6 @@
 extern crate diesel;
 use crate::action::Action;
-use crate::attack::Attack;
+use crate::attack::{Attack, AttackBuilderError};
 use crate::reaction_set::ReactionSet;
 use diesel::insert_into;
 use diesel::pg::PgConnection;
@@ -9,16 +9,16 @@ use regex::Regex;
 use serenity::{
     async_trait,
     model::{
+        application::{
+            command::{Command, CommandOptionType},
+            interaction::{
+                application_command::CommandDataOptionValue, Interaction, InteractionResponseType,
+                MessageFlags,
+            },
+        },
         channel::Message,
         gateway::Ready,
         id::GuildId,
-        interactions::{
-            application_command::{
-                ApplicationCommand, ApplicationCommandInteractionDataOptionValue,
-                ApplicationCommandOptionType,
-            },
-            Interaction, InteractionResponseType,
-        },
     },
     prelude::*,
 };
@@ -44,6 +44,7 @@ impl Handler {
                 user_id.eq(attack.get_user().0 as i64),
                 reactions.eq(attack.get_emotes()),
                 expiration.eq(attack.get_expiration()),
+                regex.eq(attack.get_regex()),
             ))
             .execute(&*db);
 
@@ -94,6 +95,14 @@ impl EventHandler for Handler {
                 println!("Error reacting to message: {:?}", why);
             }
         }
+
+        // Delete any expired rules
+        {
+            let db = self.db_con.lock().unwrap();
+            diesel::delete(actions.filter(expiration.lt(time)))
+                .execute(&*db)
+                .expect("Delete failed");
+        }
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -105,38 +114,41 @@ impl EventHandler for Handler {
                     for entry in &command.data.options {
                         match entry.name.as_ref() {
                             "user" => {
-                                if let Some(ApplicationCommandInteractionDataOptionValue::User(
-                                    user,
-                                    _,
-                                )) = &entry.resolved
+                                if let Some(CommandDataOptionValue::User(user, _)) = &entry.resolved
                                 {
                                     builder = builder.set_user(user.id)
                                 }
                             }
                             "emotes" => {
-                                if let Some(ApplicationCommandInteractionDataOptionValue::String(
-                                    s,
-                                )) = &entry.resolved
-                                {
+                                if let Some(CommandDataOptionValue::String(s)) = &entry.resolved {
                                     builder = builder.set_emotes(s)
                                 }
                             }
                             "duration" => {
-                                if let Some(
-                                    ApplicationCommandInteractionDataOptionValue::Integer(int),
-                                ) = &entry.resolved
+                                if let Some(CommandDataOptionValue::Integer(int)) = &entry.resolved
                                 {
                                     builder = builder.set_expiration(*int as u64)
+                                }
+                            }
+                            "regex" => {
+                                if let Some(CommandDataOptionValue::String(s)) = &entry.resolved {
+                                    builder = builder.set_regex(s)
                                 }
                             }
                             _ => println!("Unexpected entry name: {}", entry.name),
                         }
                     }
-                    if let Some(attack) = builder.build() {
-                        self.attack(attack);
-                        "Attacked".to_string()
-                    } else {
-                        "Didn't work".to_string()
+                    match builder.build() {
+                        Ok(attack) => {
+                            self.attack(attack);
+                            "Attack added".to_string()
+                        }
+                        Err(AttackBuilderError::BadRegex(_)) => {
+                            "Your regex game is weak, bitch. Refer to \
+                            https://docs.rs/regex/latest/regex/index.html#syntax"
+                                .to_string()
+                        }
+                        Err(e) => e.to_string(),
                     }
                 }
                 _ => "not implemented :(".to_string(),
@@ -146,7 +158,9 @@ impl EventHandler for Handler {
                 .create_interaction_response(&ctx.http, |response| {
                     response
                         .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
+                        .interaction_response_data(|message| {
+                            message.content(content).flags(MessageFlags::EPHEMERAL)
+                        })
                 })
                 .await
             {
@@ -168,24 +182,31 @@ impl EventHandler for Handler {
                         option
                             .name("user")
                             .description("The user to attack")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("emotes")
                             .description("List of emotes to attack with")
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("duration")
                             .description("Length of attack in minutes")
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                             .min_int_value(1)
                             .max_int_value(1440)
                             .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("regex")
+                            .description("Regular expression to match against")
+                            .kind(CommandOptionType::String)
+                            .required(false)
                     })
             })
         })
@@ -197,7 +218,7 @@ impl EventHandler for Handler {
         );
 
         // Commands for all servers
-        let commands = ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
+        let commands = Command::set_global_application_commands(&ctx.http, |commands| {
             commands.create_application_command(|command| {
                 command
                     .name("attack")
@@ -206,24 +227,31 @@ impl EventHandler for Handler {
                         option
                             .name("user")
                             .description("The user to attack")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("emotes")
                             .description("List of emotes to attack with")
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .required(true)
                     })
                     .create_option(|option| {
                         option
                             .name("duration")
                             .description("Length of attack in minutes")
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                             .min_int_value(1)
                             .max_int_value(1440)
                             .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("regex")
+                            .description("Regular expression to match against")
+                            .kind(CommandOptionType::String)
+                            .required(false)
                     })
             })
         })

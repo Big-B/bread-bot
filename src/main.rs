@@ -1,8 +1,8 @@
 mod action;
 mod attack;
 mod handler;
-mod schema;
 mod reaction_set;
+mod schema;
 #[macro_use]
 extern crate diesel;
 use crate::handler::Handler;
@@ -41,11 +41,14 @@ async fn main() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", config_data.postgres_url));
 
     // Loop over configured action and convert them to a HashMap
-    let mut client = Client::builder(&config_data.discord_token, GatewayIntents::MESSAGE_CONTENT)
-        .application_id(config_data.application_id)
-        .event_handler(Handler::new(Arc::new(Mutex::new(connection))))
-        .await
-        .expect("Err creating client");
+    let mut client = Client::builder(
+        &config_data.discord_token,
+        GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT,
+    )
+    .application_id(config_data.application_id)
+    .event_handler(Handler::new(Arc::new(Mutex::new(connection))))
+    .await
+    .expect("Err creating client");
 
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
