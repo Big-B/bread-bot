@@ -1,9 +1,9 @@
 use crate::schema::actions;
-use diesel::{Queryable, Insertable};
+use diesel::{Insertable, Queryable};
 use std::time::SystemTime;
 
 #[derive(Queryable, Insertable, Debug)]
-#[table_name="actions"]
+#[table_name = "actions"]
 pub struct Action {
     pub id: i64,
     pub guild_id: i64,

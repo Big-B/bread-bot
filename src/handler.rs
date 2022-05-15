@@ -1,7 +1,7 @@
 extern crate diesel;
 use crate::action::Action;
-use crate::target::{Target, TargetBuilderError};
 use crate::reaction_set::ReactionSet;
+use crate::target::{Target, TargetBuilderError};
 use diesel::insert_into;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -41,7 +41,7 @@ impl Handler {
         let res = insert_into(actions)
             .values((
                 guild_id.eq(target.get_guild().0 as i64),
-                user_id.eq(target.get_user().0 as i64),
+                user_id.eq(target.get_user()),
                 reactions.eq(target.get_emotes()),
                 expiration.eq(target.get_expiration()),
                 regex.eq(target.get_regex()),
@@ -113,12 +113,6 @@ impl EventHandler for Handler {
                     builder = builder.set_guild(command.guild_id.unwrap());
                     for entry in &command.data.options {
                         match entry.name.as_ref() {
-                            "user" => {
-                                if let Some(CommandDataOptionValue::User(user, _)) = &entry.resolved
-                                {
-                                    builder = builder.set_user(user.id)
-                                }
-                            }
                             "emotes" => {
                                 if let Some(CommandDataOptionValue::String(s)) = &entry.resolved {
                                     builder = builder.set_emotes(s)
@@ -128,6 +122,12 @@ impl EventHandler for Handler {
                                 if let Some(CommandDataOptionValue::Integer(int)) = &entry.resolved
                                 {
                                     builder = builder.set_expiration(*int as u64)
+                                }
+                            }
+                            "user" => {
+                                if let Some(CommandDataOptionValue::User(user, _)) = &entry.resolved
+                                {
+                                    builder = builder.set_user(user.id)
                                 }
                             }
                             "regex" => {
@@ -147,6 +147,9 @@ impl EventHandler for Handler {
                             "Your regex game is weak, bitch. Refer to \
                             https://docs.rs/regex/latest/regex/index.html#syntax"
                                 .to_string()
+                        }
+                        Err(TargetBuilderError::MissingUserAndRegex) => {
+                            "Need either a user or a regex or both... bitch".to_string()
                         }
                         Err(e) => e.to_string(),
                     }
@@ -180,13 +183,6 @@ impl EventHandler for Handler {
                     .description("Set an target rule")
                     .create_option(|option| {
                         option
-                            .name("user")
-                            .description("The user to target")
-                            .kind(CommandOptionType::User)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
                             .name("emotes")
                             .description("List of emotes to target with")
                             .kind(CommandOptionType::String)
@@ -200,6 +196,13 @@ impl EventHandler for Handler {
                             .min_int_value(1)
                             .max_int_value(1440)
                             .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("user")
+                            .description("The user to target")
+                            .kind(CommandOptionType::User)
+                            .required(false)
                     })
                     .create_option(|option| {
                         option
@@ -225,13 +228,6 @@ impl EventHandler for Handler {
                     .description("Set an target rule")
                     .create_option(|option| {
                         option
-                            .name("user")
-                            .description("The user to target")
-                            .kind(CommandOptionType::User)
-                            .required(true)
-                    })
-                    .create_option(|option| {
-                        option
                             .name("emotes")
                             .description("List of emotes to target with")
                             .kind(CommandOptionType::String)
@@ -245,6 +241,13 @@ impl EventHandler for Handler {
                             .min_int_value(1)
                             .max_int_value(1440)
                             .required(true)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("user")
+                            .description("The user to target")
+                            .kind(CommandOptionType::User)
+                            .required(false)
                     })
                     .create_option(|option| {
                         option
