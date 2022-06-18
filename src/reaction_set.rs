@@ -20,7 +20,7 @@ impl ReactionSet {
         }
     }
 
-    pub fn get_reaction_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &self.list
     }
 }
@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn empty_test() {
         let set = ReactionSet::new();
-        let ret = set.get_reaction_str();
+        let ret = set.as_str();
         assert_eq!(ret, "");
     }
 
@@ -40,7 +40,7 @@ mod tests {
     fn identity() {
         let mut set = ReactionSet::new();
         set.add_reactions(&["a".to_string(), "b".to_string(), "c".to_string()]);
-        assert_eq!(set.get_reaction_str(), "abc");
+        assert_eq!(set.as_str(), "abc");
     }
 
     #[test]
@@ -48,6 +48,6 @@ mod tests {
         let mut set = ReactionSet::new();
         set.add_reactions(&["a".to_string()]);
         set.add_reactions(&["a".to_string()]);
-        assert_eq!(set.get_reaction_str(), "a");
+        assert_eq!(set.as_str(), "a");
     }
 }

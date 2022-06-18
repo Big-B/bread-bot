@@ -89,7 +89,7 @@ impl EventHandler for Handler {
         }
 
         // Go through all the reactions and react to the message appropriately
-        for reaction in reaction_set.get_reaction_str().chars() {
+        for reaction in reaction_set.as_str().chars() {
             if let Err(why) = msg.react(ctx.http.clone(), reaction).await {
                 println!("Error reacting to message: {:?}", why);
             }
