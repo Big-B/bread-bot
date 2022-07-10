@@ -246,7 +246,8 @@ impl EventHandler for Handler {
                         })
                 })
         })
-        .await.unwrap();
+        .await
+        .unwrap();
         println!("{} is connected!", ready.user.name);
     }
 }
