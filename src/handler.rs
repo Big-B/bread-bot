@@ -36,7 +36,7 @@ impl Handler {
 
     fn target(&self, target: Target) {
         use crate::schema::actions::dsl::*;
-        let db = self.db_con.lock().unwrap();
+        let mut db = self.db_con.lock().unwrap();
         let res = insert_into(actions)
             .values((
                 guild_id.eq(target.get_guild().0 as i64),
@@ -45,7 +45,7 @@ impl Handler {
                 expiration.eq(target.get_expiration()),
                 regex.eq(target.get_regex()),
             ))
-            .execute(&*db);
+            .execute(&mut *db);
 
         if let Err(e) = res {
             println!("Error inserting target {:?}! {}", target, e);
@@ -63,12 +63,12 @@ impl EventHandler for Handler {
         // Grab the results of the query and minimize the scope of the db lock
         // Looking for either a matching or null author in the proper guild
         let results = {
-            let db = self.db_con.lock().unwrap();
+            let mut db = self.db_con.lock().unwrap();
             actions
                 .filter(guild_id.eq(msg.guild_id.expect("No guild ID for message").0 as i64))
                 .filter(user_id.eq(msg.author.id.0 as i64).or(user_id.is_null()))
                 .filter(expiration.is_null().or(expiration.gt(time)))
-                .load::<Action>(&*db)
+                .load::<Action>(&mut *db)
                 .expect("Query Failed")
         };
 
@@ -97,9 +97,9 @@ impl EventHandler for Handler {
 
         // Delete any expired rules
         {
-            let db = self.db_con.lock().unwrap();
+            let mut db = self.db_con.lock().unwrap();
             diesel::delete(actions.filter(expiration.lt(time)))
-                .execute(&*db)
+                .execute(&mut *db)
                 .expect("Delete failed");
         }
     }
