@@ -15,14 +15,15 @@ Start up and configure postgres (create a database, users, etc). Ensure
 `/etc/bread-bot.toml` is filled out properly. The provided example is for a
 database with a user `bread-bot` and a database `bread`, and uses the discord
 provided token and application ID provided for your bot in the [developer
-portal](https://discord.com/developers/applications). Run `diesel migration
-run`. Start `bread-bot`. An example system file is provided to run as a service
-with systemd.
+portal](https://discord.com/developers/applications). Bot requires the
+`GUILD_MESSAGES` and `MESSAGE_CONTENT` intents. Run `diesel migration run`.
+Start `bread-bot`. An example system file is provided to run as a service with
+systemd.
 
 # Adding Rules
 
-`bread-bot` utilizes a database containing a single table:
-`id | guild_id | user_id | regex | reactions | expiration`
+`bread-bot` utilizes a database containing a single table: `id | guild_id |
+user_id | regex | reactions | expiration`
 
 Adding rules is done through SQL commands directly to the postgres database
 currently.
