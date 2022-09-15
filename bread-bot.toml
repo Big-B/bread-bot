@@ -1,3 +1,8 @@
+# Discord Token for the bot
 discord_token = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
+# URL for postgres.
 postgres_url = "postgres://bread-bot:<password>@localhost/bread"
+
+# Bot Application ID
+application_id = 0123456789
