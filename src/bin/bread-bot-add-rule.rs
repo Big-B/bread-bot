@@ -24,7 +24,7 @@ struct Args {
     #[arg(short, long)]
     emotes: String,
 
-    /// An time in seconds after which the rule will be removed
+    /// A time, in minutes, after which the rule will be removed
     #[arg(long)]
     expiration: Option<u64>,
 

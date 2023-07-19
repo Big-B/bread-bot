@@ -83,6 +83,7 @@ impl TargetBuilder {
         self
     }
 
+    /// Set expiration in minutes from now.
     pub fn set_expiration(mut self, expiration: u64) -> TargetBuilder {
         let now = SystemTime::now();
         if let Some(expiration) = now.checked_add(Duration::from_secs(expiration * 60)) {
