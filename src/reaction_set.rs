@@ -25,6 +25,12 @@ impl ReactionSet {
     }
 }
 
+impl Default for ReactionSet {
+    fn default() -> Self {
+        ReactionSet::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

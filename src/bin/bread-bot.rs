@@ -1,26 +1,13 @@
-mod action;
-mod handler;
-mod reaction_set;
-mod schema;
-mod target;
-#[macro_use]
 extern crate diesel;
-use crate::handler::Handler;
+use bread_bot::config::Config;
+use bread_bot::handler::Handler;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use serde::Deserialize;
 use serenity::prelude::*;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::sync::Arc;
 use std::sync::Mutex;
-
-#[derive(Deserialize)]
-struct Config {
-    discord_token: String,
-    postgres_url: String,
-    application_id: u64,
-}
 
 #[tokio::main]
 async fn main() {

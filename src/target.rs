@@ -7,9 +7,9 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug)]
 pub struct Target {
     guild: GuildId,
-    user: Option<i64>,
+    user: Option<u64>,
     emotes: Vec<String>,
-    expiration: SystemTime,
+    expiration: Option<SystemTime>,
     regex: Option<String>,
 }
 
@@ -22,7 +22,7 @@ impl Target {
         self.guild
     }
 
-    pub fn get_user(&self) -> Option<i64> {
+    pub fn get_user(&self) -> Option<u64> {
         self.user
     }
 
@@ -30,7 +30,7 @@ impl Target {
         &self.emotes
     }
 
-    pub fn get_expiration(&self) -> SystemTime {
+    pub fn get_expiration(&self) -> Option<SystemTime> {
         self.expiration
     }
 
@@ -49,7 +49,7 @@ pub enum TargetBuilderError {
 impl fmt::Display for TargetBuilderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            TargetBuilderError::MissingUserAndRegex => write!(f, "Missing argument"),
+            TargetBuilderError::MissingUserAndRegex => write!(f, "Missing user and regex"),
             TargetBuilderError::BadRegex(_) => write!(f, "Regex was invalid"),
             TargetBuilderError::EmptyField(s) => write!(f, "{}", s),
         }
@@ -61,7 +61,7 @@ impl Error for TargetBuilderError {}
 #[derive(Default, Clone)]
 pub struct TargetBuilder {
     guild: Option<GuildId>,
-    user: Option<i64>,
+    user: Option<u64>,
     emotes: Option<String>,
     expiration: Option<SystemTime>,
     regex: Option<String>,
@@ -74,7 +74,7 @@ impl TargetBuilder {
     }
 
     pub fn set_user(mut self, uid: UserId) -> TargetBuilder {
-        self.user = Some(uid.0 as i64);
+        self.user = Some(uid.0);
         self
     }
 
@@ -110,11 +110,6 @@ impl TargetBuilder {
                 "No Emotes provided".to_string(),
             ));
         }
-        if self.expiration.is_none() {
-            return Err(TargetBuilderError::EmptyField(
-                "No Expiration provided".to_string(),
-            ));
-        }
         if self.regex.is_some() {
             if let Err(e) = Regex::new(self.regex.as_ref().unwrap()) {
                 return Err(TargetBuilderError::BadRegex(e));
@@ -130,7 +125,7 @@ impl TargetBuilder {
                 .chars()
                 .map(|c| c.to_string())
                 .collect(),
-            expiration: self.expiration.unwrap(),
+            expiration: self.expiration,
             regex: self.regex,
         })
     }

@@ -40,7 +40,7 @@ impl Handler {
         let res = insert_into(actions)
             .values((
                 guild_id.eq(target.get_guild().0 as i64),
-                user_id.eq(target.get_user()),
+                user_id.eq(target.get_user().map(|x| x as i64)),
                 reactions.eq(target.get_emotes()),
                 expiration.eq(target.get_expiration()),
                 regex.eq(target.get_regex()),
