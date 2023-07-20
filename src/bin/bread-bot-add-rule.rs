@@ -70,6 +70,7 @@ fn convert_to_regional_codes(input: &str) -> Result<String, anyhow::Error> {
     let map = get_char_map();
     let mut set = HashSet::new();
     let s: String = input
+        .to_ascii_lowercase()
         .chars()
         .map(|x| {
             set.insert(x);
