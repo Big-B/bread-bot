@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bread_bot::config::Config;
 use bread_bot::target::TargetBuilder;
 use clap::Parser;
@@ -6,6 +6,8 @@ use diesel::insert_into;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use serenity::model::prelude::*;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
@@ -33,12 +35,70 @@ struct Args {
     regex: Option<String>,
 }
 
+fn get_char_map() -> HashMap<char, char> {
+    HashMap::from([
+        ('a', '🇦'),
+        ('b', '🇧'),
+        ('c', '🇨'),
+        ('d', '🇩'),
+        ('e', '🇪'),
+        ('f', '🇫'),
+        ('g', '🇬'),
+        ('h', '🇭'),
+        ('i', '🇮'),
+        ('j', '🇯'),
+        ('k', '🇰'),
+        ('l', '🇱'),
+        ('m', '🇲'),
+        ('n', '🇳'),
+        ('o', '🇴'),
+        ('p', '🇵'),
+        ('q', '🇶'),
+        ('r', '🇷'),
+        ('s', '🇸'),
+        ('t', '🇹'),
+        ('u', '🇺'),
+        ('v', '🇻'),
+        ('w', '🇼'),
+        ('x', '🇽'),
+        ('y', '🇾'),
+        ('z', '🇿'),
+    ])
+}
+
+fn convert_to_regional_codes(input: &str) -> Result<String, anyhow::Error> {
+    let map = get_char_map();
+    let mut set = HashSet::new();
+    let s: String = input
+        .chars()
+        .map(|x| {
+            set.insert(x);
+            map[&x]
+        })
+        .collect();
+
+    // There were duplicates in the set
+    if s.len() != set.len() {
+        Err(anyhow!("Input ascii had duplicate characters"))
+    } else {
+        Ok(s)
+    }
+}
+
 fn main() -> Result<(), anyhow::Error> {
     use bread_bot::schema::actions::dsl::*;
     let args = Args::parse();
 
     let mut builder = TargetBuilder::default();
-    builder = builder.set_emotes(&args.emotes);
+
+    // If the text is all ascii, then it's probably just words intended to be
+    // converted to the unicode regional indicator types.
+    builder = if args.emotes.is_ascii() {
+        builder.set_emotes(&convert_to_regional_codes(&args.emotes)?)
+    } else {
+        builder.set_emotes(&args.emotes)
+    };
+
     builder = builder.set_guild(GuildId::from(args.guild));
 
     if let Some(u) = args.user {
