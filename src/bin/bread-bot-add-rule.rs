@@ -79,7 +79,7 @@ fn convert_to_regional_codes(input: &str) -> Result<String, anyhow::Error> {
         .collect();
 
     // There were duplicates in the set
-    if s.len() != set.len() {
+    if input.len() != set.len() {
         Err(anyhow!("Input ascii had duplicate characters"))
     } else {
         Ok(s)
