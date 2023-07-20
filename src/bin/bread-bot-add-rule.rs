@@ -118,17 +118,15 @@ fn main() -> Result<(), anyhow::Error> {
 
     // Read in config file
     let mut reader = BufReader::new(
-        File::open("/etc/bread-bot.toml")
-            .expect("Expected /etc/bread-bot.toml to exist and be readable"),
+        File::open("/etc/bread-bot.toml")?
     );
 
     // Parse config file
     let mut config_data = String::new();
     reader
-        .read_to_string(&mut config_data)
-        .expect("Expected valid UTF-8 in config file");
+        .read_to_string(&mut config_data)?;
 
-    let config_data: Config = toml::from_str(&config_data).expect("Invalid config file format");
+    let config_data: Config = toml::from_str(&config_data)?;
     let mut connection = PgConnection::establish(&config_data.postgres_url)
         .with_context(|| format!("Error connecting to {}", config_data.postgres_url))?;
 
