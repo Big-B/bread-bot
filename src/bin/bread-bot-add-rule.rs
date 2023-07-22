@@ -74,9 +74,10 @@ fn convert_to_regional_codes(input: &str) -> Result<String, anyhow::Error> {
         .chars()
         .map(|x| {
             set.insert(x);
-            map[&x]
+            map.get(&x)
+                .ok_or(anyhow!("String has non-alphabet characters"))
         })
-        .collect();
+        .collect::<Result<String, _>>()?;
 
     // There were duplicates in the set
     if input.len() != set.len() {
@@ -117,14 +118,11 @@ fn main() -> Result<(), anyhow::Error> {
     let target = builder.build()?;
 
     // Read in config file
-    let mut reader = BufReader::new(
-        File::open("/etc/bread-bot.toml")?
-    );
+    let mut reader = BufReader::new(File::open("/etc/bread-bot.toml")?);
 
     // Parse config file
     let mut config_data = String::new();
-    reader
-        .read_to_string(&mut config_data)?;
+    reader.read_to_string(&mut config_data)?;
 
     let config_data: Config = toml::from_str(&config_data)?;
     let mut connection = PgConnection::establish(&config_data.postgres_url)
