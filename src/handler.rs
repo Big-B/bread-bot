@@ -64,12 +64,14 @@ impl Handler {
         // This is to attempt to handle cases where some loser tries to get around
         // our rules by typing letters out one at a time.
         let mut map = self.letter_chain.lock().unwrap();
-        if let Some((user, s)) = map.remove(&gid) {
-            let letters: Vec<&str> = msg.graphemes(true).collect();
-            if letters.len() == 1 && user == uid {
-                return Some(map.insert(gid, (user, s + letters[0])).unwrap().1)
-            } else if letters.len() == 1 {
-                map.insert(gid, (user, msg.to_string()));
+        let letters: Vec<&str> = msg.graphemes(true).collect();
+        if letters.len() == 1 {
+            if let Some((user, s)) = map.remove(&gid) {
+                if user == uid {
+                    return Some(map.insert(gid, (user, s + letters[0])).unwrap().1)
+                } else {
+                    map.insert(gid, (user, msg.to_string()));
+                }
             }
         }
         None
