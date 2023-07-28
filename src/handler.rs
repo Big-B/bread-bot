@@ -65,13 +65,21 @@ impl Handler {
         // our rules by typing letters out one at a time.
         let mut map = self.letter_chain.lock().unwrap();
         let letters: Vec<&str> = msg.graphemes(true).collect();
+
+        // Pop off the group's entry, if it exists
+        let entry = map.remove(&gid);
+        // We really only care about single characters
         if letters.len() == 1 {
-            if let Some((user, s)) = map.remove(&gid) {
+            // If there's already an entry, and the user matches append to it and return the full
+            // string, otherwise start a new entry
+            if let Some((user, s)) = entry {
                 if user == uid {
-                    return Some(map.insert(gid, (user, s + letters[0])).unwrap().1)
-                } else {
-                    map.insert(gid, (user, msg.to_string()));
+                    let s = s + letters[0];
+                    map.insert(gid, (uid, s.clone()));
+                    return Some(s);
                 }
+            } else {
+                map.insert(gid, (uid, msg.to_string()));
             }
         }
         None
@@ -86,7 +94,6 @@ impl EventHandler for Handler {
         let time = SystemTime::now();
         let gid = msg.guild_id.expect("No guild ID for message");
         let uid = msg.author.id;
-        let mut messages = vec![msg.content.clone()];
 
         // Grab the results of the query and minimize the scope of the db lock
         // Looking for either a matching or null author in the proper guild
@@ -100,9 +107,7 @@ impl EventHandler for Handler {
                 .expect("Query Failed")
         };
 
-        if let Some(s) = self.check_column(&messages[0], gid, uid) {
-            messages.push(s);
-        }
+        let column = self.check_column(&msg.content, gid, uid);
 
         // Gather all the reactions. If there is a regex, check it, if not then
         // just add the reaction
@@ -111,9 +116,14 @@ impl EventHandler for Handler {
             if let Some(s) = action.regex {
                 // There is a regex, so see if it matches
                 let r = Regex::new(&s).unwrap();
-                for s in &messages {
+                if r.is_match(&msg.content) {
+                    reaction_set.add_reactions(&action.reactions);
+                }
+
+                if let Some(s) = &column {
                     if r.is_match(s) {
                         reaction_set.add_reactions(&action.reactions);
+                        self.letter_chain.lock().unwrap().remove(&gid);
                     }
                 }
             } else {
