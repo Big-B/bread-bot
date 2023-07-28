@@ -18,20 +18,27 @@ use serenity::{
         },
         channel::Message,
         gateway::Ready,
+        id::{GuildId, UserId},
     },
     prelude::*,
 };
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
+use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Handler {
     db_con: Arc<Mutex<PgConnection>>,
+    letter_chain: Arc<Mutex<HashMap<GuildId, (UserId, String)>>>,
 }
 
 impl Handler {
     pub fn new(db_con: Arc<Mutex<PgConnection>>) -> Self {
-        Self { db_con }
+        Self {
+            db_con,
+            letter_chain: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     fn target(&self, target: Target) {
@@ -51,6 +58,22 @@ impl Handler {
             println!("Error inserting target {:?}! {}", target, e);
         }
     }
+
+    fn check_column(&self, msg: &str, gid: GuildId, uid: UserId) -> Option<String> {
+        // letter_chain: Arc<Mutex<HashMap<GuildId, (UserId, String)>>>,
+        // This is to attempt to handle cases where some loser tries to get around
+        // our rules by typing letters out one at a time.
+        let mut map = self.letter_chain.lock().unwrap();
+        if let Some((user, s)) = map.remove(&gid) {
+            let letters: Vec<&str> = msg.graphemes(true).collect();
+            if letters.len() == 1 && user == uid {
+                return Some(map.insert(gid, (user, s + letters[0])).unwrap().1)
+            } else if letters.len() == 1 {
+                map.insert(gid, (user, msg.to_string()));
+            }
+        }
+        None
+    }
 }
 
 #[async_trait]
@@ -59,18 +82,25 @@ impl EventHandler for Handler {
         use crate::schema::actions::dsl::*;
 
         let time = SystemTime::now();
+        let gid = msg.guild_id.expect("No guild ID for message");
+        let uid = msg.author.id;
+        let mut messages = vec![msg.content.clone()];
 
         // Grab the results of the query and minimize the scope of the db lock
         // Looking for either a matching or null author in the proper guild
         let results = {
             let mut db = self.db_con.lock().unwrap();
             actions
-                .filter(guild_id.eq(msg.guild_id.expect("No guild ID for message").0 as i64))
+                .filter(guild_id.eq(gid.0 as i64))
                 .filter(user_id.eq(msg.author.id.0 as i64).or(user_id.is_null()))
                 .filter(expiration.is_null().or(expiration.gt(time)))
                 .load::<Action>(&mut *db)
                 .expect("Query Failed")
         };
+
+        if let Some(s) = self.check_column(&messages[0], gid, uid) {
+            messages.push(s);
+        }
 
         // Gather all the reactions. If there is a regex, check it, if not then
         // just add the reaction
@@ -79,8 +109,10 @@ impl EventHandler for Handler {
             if let Some(s) = action.regex {
                 // There is a regex, so see if it matches
                 let r = Regex::new(&s).unwrap();
-                if r.is_match(&msg.content) {
-                    reaction_set.add_reactions(&action.reactions);
+                for s in &messages {
+                    if r.is_match(s) {
+                        reaction_set.add_reactions(&action.reactions);
+                    }
                 }
             } else {
                 // No regex, so just add to list if not conflicting
