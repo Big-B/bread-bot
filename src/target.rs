@@ -74,7 +74,7 @@ impl TargetBuilder {
     }
 
     pub fn set_user(mut self, uid: UserId) -> TargetBuilder {
-        self.user = Some(uid.0);
+        self.user = Some(uid.get());
         self
     }
 

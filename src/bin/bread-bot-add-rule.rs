@@ -130,7 +130,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     insert_into(actions)
         .values((
-            guild_id.eq(target.get_guild().0 as i64),
+            guild_id.eq(target.get_guild().get() as i64),
             user_id.eq(target.get_user().map(|x| x as i64)),
             reactions.eq(target.get_emotes()),
             expiration.eq(target.get_expiration()),

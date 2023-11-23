@@ -32,7 +32,7 @@ async fn main() {
         &config_data.discord_token,
         GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT,
     )
-    .application_id(config_data.application_id)
+    .application_id(config_data.application_id.into())
     .event_handler(Handler::new(Arc::new(Mutex::new(connection))))
     .await
     .expect("Err creating client");

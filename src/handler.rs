@@ -8,14 +8,12 @@ use diesel::prelude::*;
 use regex::Regex;
 use serenity::{
     async_trait,
+    builder::{
+        CreateCommand, CreateCommandOption, CreateInteractionResponse,
+        CreateInteractionResponseMessage,
+    },
     model::{
-        application::{
-            command::{Command, CommandOptionType},
-            interaction::{
-                application_command::CommandDataOptionValue, Interaction, InteractionResponseType,
-                MessageFlags,
-            },
-        },
+        application::{Command, CommandDataOptionValue, CommandOptionType, Interaction},
         channel::Message,
         gateway::Ready,
         id::{GuildId, UserId},
@@ -46,7 +44,7 @@ impl Handler {
         let mut db = self.db_con.lock().unwrap();
         let res = insert_into(actions)
             .values((
-                guild_id.eq(target.get_guild().0 as i64),
+                guild_id.eq(target.get_guild().get() as i64),
                 user_id.eq(target.get_user().map(|x| x as i64)),
                 reactions.eq(target.get_emotes()),
                 expiration.eq(target.get_expiration()),
@@ -100,8 +98,8 @@ impl EventHandler for Handler {
         let results = {
             let mut db = self.db_con.lock().unwrap();
             actions
-                .filter(guild_id.eq(gid.0 as i64))
-                .filter(user_id.eq(msg.author.id.0 as i64).or(user_id.is_null()))
+                .filter(guild_id.eq(gid.get() as i64))
+                .filter(user_id.eq(msg.author.id.get() as i64).or(user_id.is_null()))
                 .filter(expiration.is_null().or(expiration.gt(time)))
                 .load::<Action>(&mut *db)
                 .expect("Query Failed")
@@ -149,7 +147,7 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
+        if let Interaction::Command(command) = interaction {
             let content = match command.data.name.as_str() {
                 "target_user" | "target_regex" => {
                     let mut builder = Target::builder();
@@ -157,24 +155,22 @@ impl EventHandler for Handler {
                     for entry in &command.data.options {
                         match entry.name.as_ref() {
                             "emotes" => {
-                                if let Some(CommandDataOptionValue::String(s)) = &entry.resolved {
+                                if let CommandDataOptionValue::String(s) = &entry.value {
                                     builder = builder.set_emotes(s)
                                 }
                             }
                             "duration" => {
-                                if let Some(CommandDataOptionValue::Integer(int)) = &entry.resolved
-                                {
+                                if let CommandDataOptionValue::Integer(int) = &entry.value {
                                     builder = builder.set_expiration(*int as u64)
                                 }
                             }
                             "user" => {
-                                if let Some(CommandDataOptionValue::User(user, _)) = &entry.resolved
-                                {
-                                    builder = builder.set_user(user.id)
+                                if let CommandDataOptionValue::User(user) = &entry.value {
+                                    builder = builder.set_user(*user)
                                 }
                             }
                             "regex" => {
-                                if let Some(CommandDataOptionValue::String(s)) = &entry.resolved {
+                                if let CommandDataOptionValue::String(s) = &entry.value {
                                     builder = builder.set_regex(s)
                                 }
                             }
@@ -201,12 +197,9 @@ impl EventHandler for Handler {
             };
 
             if let Err(why) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| {
-                            message.content(content).flags(MessageFlags::EPHEMERAL)
-                        })
+                .create_response(&ctx.http, {
+                    let response = CreateInteractionResponseMessage::new().content(content);
+                    CreateInteractionResponse::Message(response)
                 })
                 .await
             {
@@ -217,81 +210,78 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         // Commands for all servers
-        Command::set_global_application_commands(&ctx.http, |commands| {
-            commands
-                .create_application_command(|command| {
-                    command
-                        .name("target_user")
-                        .description("Target a user")
-                        .create_option(|option| {
-                            option
-                                .name("user")
-                                .description("The user to target")
-                                .kind(CommandOptionType::User)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("emotes")
-                                .description("List of emotes to target with")
-                                .kind(CommandOptionType::String)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("duration")
-                                .description("Length of target in minutes")
-                                .kind(CommandOptionType::Integer)
-                                .min_int_value(1)
-                                .max_int_value(1440)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("regex")
-                                .description("Regular expression to match against")
-                                .kind(CommandOptionType::String)
-                                .required(false)
-                        })
-                })
-                .create_application_command(|command| {
-                    command
-                        .name("target_regex")
-                        .description("Target message content")
-                        .create_option(|option| {
-                            option
-                                .name("regex")
-                                .description("Regular expression to match against")
-                                .kind(CommandOptionType::String)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("emotes")
-                                .description("List of emotes to target with")
-                                .kind(CommandOptionType::String)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("duration")
-                                .description("Length of target in minutes")
-                                .kind(CommandOptionType::Integer)
-                                .min_int_value(1)
-                                .max_int_value(1440)
-                                .required(true)
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("user")
-                                .description("The user to target")
-                                .kind(CommandOptionType::User)
-                                .required(false)
-                        })
-                })
-        })
-        .await
-        .unwrap();
+        let mut commands = Vec::new();
+        let command = CreateCommand::new("target_user")
+            .description("Target a user")
+            .add_option({
+                CreateCommandOption::new(CommandOptionType::User, "user", "The user to target")
+                    .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "emotes",
+                    "List of emotes to target with",
+                )
+                .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::Integer,
+                    "duration",
+                    "Length of target in minutes",
+                )
+                .min_int_value(1)
+                .max_int_value(1440)
+                .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "regex",
+                    "Regular expression to match against",
+                )
+                .required(false)
+            });
+        commands.push(command);
+
+        let command = CreateCommand::new("target_regex")
+            .description("Target message content")
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "regex",
+                    "Regular expression to match against",
+                )
+                .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "emotes",
+                    "List of emotes to target with",
+                )
+                .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(
+                    CommandOptionType::Integer,
+                    "duration",
+                    "Length of target in minutes",
+                )
+                .min_int_value(1)
+                .max_int_value(1440)
+                .required(true)
+            })
+            .add_option({
+                CreateCommandOption::new(CommandOptionType::User, "user", "The user to target")
+                    .required(false)
+            });
+        commands.push(command);
+
+        Command::set_global_commands(&ctx.http, commands)
+            .await
+            .unwrap();
         println!("{} is connected!", ready.user.name);
     }
 }
