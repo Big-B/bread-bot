@@ -1057,7 +1057,7 @@ dependencies = [
 [[package]]
 name = "serenity"
 version = "0.12.1"
-source = "git+https://github.com/serenity-rs/serenity?branch=current#ddff174ea37bed881316a3811417a7414d8c09d9"
+source = "git+https://github.com/serenity-rs/serenity?branch=current#1dcda8d3799320e815ce46657acfea01dd37069e"
 dependencies = [
  "arrayvec",
  "async-trait",
@@ -1130,9 +1130,9 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "syn"
-version = "2.0.54"
+version = "2.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d58c553602655d8937296cad75ba63fd61e1f59e1be5ff87c596b6e900efef98"
+checksum = "002a1b3dbf967edfafc32655d0f377ab0bb7b994aa1d32c8cc7e9b8bf3ebb8f0"
 dependencies = [
  "proc-macro2",
  "quote",
