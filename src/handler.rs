@@ -20,6 +20,8 @@ use serenity::{
     },
     prelude::*,
 };
+
+use serenity::all::ReactionType;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -131,9 +133,11 @@ impl EventHandler for Handler {
         }
 
         // Go through all the reactions and react to the message appropriately
-        for reaction in reaction_set.as_str().chars() {
-            if let Err(why) = msg.react(ctx.http.clone(), reaction).await {
-                println!("Error reacting to message: {:?}", why);
+        for reaction in reaction_set.as_str().graphemes(true) {
+            if let Ok(r) = ReactionType::try_from(reaction) {
+                if let Err(why) = msg.react(ctx.http.clone(), r).await {
+                    println!("Error reacting to message: {:?}", why);
+                }
             }
         }
 
