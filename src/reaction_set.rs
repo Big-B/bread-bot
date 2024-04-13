@@ -1,26 +1,37 @@
 use std::collections::BTreeSet;
+use unicode_segmentation::UnicodeSegmentation;
 pub struct ReactionSet {
-    list: String,
-    set: BTreeSet<char>,
+    list: Vec<String>,
+    set: BTreeSet<String>,
 }
 
 impl ReactionSet {
     pub fn new() -> Self {
         ReactionSet {
-            list: String::new(),
+            list: Vec::new(),
             set: BTreeSet::new(),
         }
     }
 
     pub fn add_reactions(&mut self, reactions: &[String]) {
-        let mut map = reactions.concat().chars().collect();
+        let single_grapheme = reactions.concat().graphemes(true).count() == 1;
+        let mut map = if single_grapheme {
+            BTreeSet::from([reactions.concat()])
+        } else {
+            reactions.iter().map(|x| x.to_owned()).collect()
+        };
+
         if self.set.is_disjoint(&map) {
             self.set.append(&mut map);
-            self.list.push_str(&reactions.concat());
+            if single_grapheme {
+                self.list.push(reactions.concat());
+            } else {
+                self.list.extend_from_slice(reactions);
+            }
         }
     }
 
-    pub fn as_str(&self) -> &str {
+    pub fn as_list(&self) -> &[String] {
         &self.list
     }
 }
@@ -38,15 +49,15 @@ mod tests {
     #[test]
     fn empty_test() {
         let set = ReactionSet::new();
-        let ret = set.as_str();
-        assert_eq!(ret, "");
+        let ret: &[String] = set.as_list();
+        assert_eq!(ret.concat(), "");
     }
 
     #[test]
     fn identity() {
         let mut set = ReactionSet::new();
         set.add_reactions(&["a".to_string(), "b".to_string(), "c".to_string()]);
-        assert_eq!(set.as_str(), "abc");
+        assert_eq!(set.as_list().concat(), "abc");
     }
 
     #[test]
@@ -54,6 +65,6 @@ mod tests {
         let mut set = ReactionSet::new();
         set.add_reactions(&["a".to_string()]);
         set.add_reactions(&["a".to_string()]);
-        assert_eq!(set.as_str(), "a");
+        assert_eq!(set.as_list().concat(), "a");
     }
 }

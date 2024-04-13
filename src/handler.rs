@@ -133,8 +133,9 @@ impl EventHandler for Handler {
         }
 
         // Go through all the reactions and react to the message appropriately
-        for reaction in reaction_set.as_str().graphemes(true) {
-            if let Ok(r) = ReactionType::try_from(reaction) {
+        for reaction in reaction_set.as_list() {
+            println!("{:?}", reaction);
+            if let Ok(r) = ReactionType::try_from(reaction.as_str()) {
                 if let Err(why) = msg.react(ctx.http.clone(), r).await {
                     println!("Error reacting to message: {:?}", why);
                 }
