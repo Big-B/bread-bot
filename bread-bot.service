@@ -4,6 +4,8 @@ After=network-online.target postgresql.service
 
 [Service]
 ExecStart=/usr/local/bin/bread-bot
+User=bread-bot
+Group=bread-bot
 
 [Install]
 WantedBy=multi-user.target
