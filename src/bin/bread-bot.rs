@@ -27,7 +27,6 @@ async fn main() {
     let connection = PgConnection::establish(&config_data.postgres_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", config_data.postgres_url));
 
-    // Loop over configured action and convert them to a HashMap
     let mut client = Client::builder(
         &config_data.discord_token,
         GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT,
