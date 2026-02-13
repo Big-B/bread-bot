@@ -111,8 +111,8 @@ impl TargetBuilder {
                 "No Emotes provided".to_string(),
             ));
         }
-        if self.regex.is_some() {
-            if let Err(e) = Regex::new(self.regex.as_ref().unwrap()) {
+        if let Some(regex) = &self.regex {
+            if let Err(e) = Regex::new(regex.as_ref()) {
                 return Err(TargetBuilderError::BadRegex(e));
             }
         }
